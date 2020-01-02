@@ -1,7 +1,9 @@
 import React from 'react';
 import Dropdown from 'react-bootstrap/Dropdown';
-import ProgressBar from 'react-bootstrap/ProgressBar'
+import ProgressBar from 'react-bootstrap/ProgressBar';
 import { withFirebase } from './Firebase';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 class HydrationMeter extends React.Component{
   constructor(props) {
@@ -9,7 +11,8 @@ class HydrationMeter extends React.Component{
     this.state = {
       user: this.props.firebase.auth.currentUser.uid,
       userName: '',
-      dailyHydration: 0
+      dailyHydration: 0,
+      dayToQuery: this.getDateAsString()
     };
     this.updateUserOunces = this.updateUserOunces.bind(this);
   }
@@ -44,8 +47,14 @@ class HydrationMeter extends React.Component{
     })
   }
 
+  handleChange = date => {
+    this.setState({
+      queryDate: date
+    });
+  };
+
   getUsersHydration(){
-    const todaysDate = this.getDateAsString()
+    const queryDate = this.state.dayToQuery
     return new Promise (resolve => {
       const ref = this.props.firebase.db.ref(this.state.user)
       ref.on("value", function(snapshot) {
@@ -55,7 +64,7 @@ class HydrationMeter extends React.Component{
         const dailyOunces = []
         for (const key in userObject) {
           let currentVal = userObject[key].time
-          if (currentVal === todaysDate) {
+          if (currentVal === queryDate) {
             dailyOunces.push(userObject[key].ounces)
           }
         }
@@ -95,9 +104,16 @@ class HydrationMeter extends React.Component{
     const progress = ((this.state.dailyHydration / 64) * 100)
     const currentOuncesOfWater = (this.state.dailyHydration || this.state.dailyHydration === 0)  ? this.state.dailyHydration : '...loading'
     const currentUser = this.state.userName ? this.state.userName : '...loading'
-    console.log(currentUser)
+    console.log(this.state)
     return(
       <div>
+        <div className="date-picker">
+          <h6>Pick a date to checkout:</h6>
+         <DatePicker 
+            selected={this.state.dayToQuery}
+            onChange={this.handleChange}
+          />
+        </div>
         <div>
           <h1>Hey {currentUser}, you've had {currentOuncesOfWater} of Ounces of H20 Today</h1>
         </div>
