@@ -9,7 +9,7 @@ class HydrationMeter extends React.Component{
     this.state = {
       user: this.props.firebase.auth.currentUser.uid,
       userName: '',
-      dailyHydration: null
+      dailyHydration: 0
     };
     this.updateUserOunces = this.updateUserOunces.bind(this);
   }
@@ -45,15 +45,19 @@ class HydrationMeter extends React.Component{
   }
 
   getUsersHydration(){
+    const todaysDate = this.getDateAsString()
     return new Promise (resolve => {
       const ref = this.props.firebase.db.ref(this.state.user)
       ref.on("value", function(snapshot) {
         const userObject = (snapshot.val());
-        //pull ounces out of object
+        console.log(userObject)
+        //pull ounces out of object and checks if the entry was made today
         const dailyOunces = []
         for (const key in userObject) {
-          let currentVal = userObject[key].ounces
-          dailyOunces.push(currentVal)
+          let currentVal = userObject[key].time
+          if (currentVal === todaysDate) {
+            dailyOunces.push(userObject[key].ounces)
+          }
         }
         //sums the total ounces 
         const sum = dailyOunces.reduce(function(a, b) { return a + b; }, 0)
@@ -65,10 +69,15 @@ class HydrationMeter extends React.Component{
   }
 
   getDateAsString(){
-    const time = new Date().getTime();
-    let date = new Date(time);
-    return date.toString()
-  }
+    var date = new Date();
+    var mm = date.getMonth() + 1; // getMonth() is zero-based
+    var dd = date.getDate();
+  
+    return [date.getFullYear(),
+            (mm>9 ? '' : '0') + mm,
+            (dd>9 ? '' : '0') + dd
+           ].join('');
+    }
 
   addHydrationToFirebase(user, ounces){
     this.props.firebase.db.ref(user).push({
@@ -84,7 +93,7 @@ class HydrationMeter extends React.Component{
   
   render(){
     const progress = ((this.state.dailyHydration / 64) * 100)
-    const currentOuncesOfWater = this.state.dailyHydration ? this.state.dailyHydration : '...loading'
+    const currentOuncesOfWater = (this.state.dailyHydration || this.state.dailyHydration === 0)  ? this.state.dailyHydration : '...loading'
     const currentUser = this.state.userName ? this.state.userName : '...loading'
     console.log(currentUser)
     return(
