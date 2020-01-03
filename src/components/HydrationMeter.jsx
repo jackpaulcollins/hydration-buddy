@@ -12,9 +12,11 @@ class HydrationMeter extends React.Component{
       user: this.props.firebase.auth.currentUser.uid,
       userName: '',
       dailyHydration: 0,
-      dayToQuery: this.getDateAsString()
+      date: this.findDayByMils(Date.now())
     };
     this.updateUserOunces = this.updateUserOunces.bind(this);
+    this.findDayByMils = this.findDayByMils.bind(this);
+    this.checkIfEntryFromDateToQuery= this.checkIfEntryFromDateToQuery.bind(this);
   }
 
   componentDidMount(){
@@ -25,6 +27,33 @@ class HydrationMeter extends React.Component{
  updateUserOunces = async function asyncCall() {
     var sum = await this.getUsersHydration();
     this.setState({ dailyHydration: sum })
+  }
+
+  findDayByMils(givenDate){
+    //takes in the miliseconds and converts to num representing date
+    const date = new Date(givenDate)
+    const year = date.getFullYear().toString()
+    const day = date.getDate().toString()
+    const month = date.getMonth().toString()
+    const combinedDate = (day + year + month)
+    return combinedDate
+  }
+
+  findDayByDatePicker(givenDate){
+    const year = givenDate.getFullYear().toString()
+    const day = givenDate.getDate().toString()
+    const month = givenDate.getMonth().toString()
+    const combinedDate = (day + year + month)
+    return combinedDate
+  }
+
+  checkIfEntryFromDateToQuery(milsToEvaluate, dateToCompare){
+    const dayOfEntry = this.findDayByMils(milsToEvaluate)
+    if (dayOfEntry === dateToCompare) {
+      return true
+    } else {
+      return false
+    }
   }
 
   updateUserName = async function asyncCall() {
@@ -47,25 +76,28 @@ class HydrationMeter extends React.Component{
     })
   }
 
-  handleChange = date => {
+  handleChange = selectedDate => {
+    const date = this.findDayByDatePicker(selectedDate)
+    console.log(date)
     this.setState({
-      queryDate: date
-    });
+      date: date
+    })
+    this.updateUserOunces()
   };
 
   getUsersHydration(){
-    const queryDate = this.state.dayToQuery
+    const dateToEvaluate = this.state.date
     return new Promise (resolve => {
       const ref = this.props.firebase.db.ref(this.state.user)
-      ref.on("value", function(snapshot) {
+      ref.on("value", snapshot => {
         const userObject = (snapshot.val());
-        console.log(userObject)
         //pull ounces out of object and checks if the entry was made today
         const dailyOunces = []
         for (const key in userObject) {
-          let currentVal = userObject[key].time
-          if (currentVal === queryDate) {
-            dailyOunces.push(userObject[key].ounces)
+          let currentVal = userObject[key].ounces
+          let dateOfEntry = userObject[key].date
+          if (this.checkIfEntryFromDateToQuery(dateOfEntry, dateToEvaluate)){
+            dailyOunces.push(currentVal)
           }
         }
         //sums the total ounces 
@@ -77,21 +109,10 @@ class HydrationMeter extends React.Component{
     })
   }
 
-  getDateAsString(){
-    var date = new Date();
-    var mm = date.getMonth() + 1; // getMonth() is zero-based
-    var dd = date.getDate();
-  
-    return [date.getFullYear(),
-            (mm>9 ? '' : '0') + mm,
-            (dd>9 ? '' : '0') + dd
-           ].join('');
-    }
-
   addHydrationToFirebase(user, ounces){
     this.props.firebase.db.ref(user).push({
       ounces: ounces,
-      time: this.getDateAsString()
+      date: Date.now()
     }, function(error){
       if (error) {
         alert ('There was an error')
@@ -104,18 +125,17 @@ class HydrationMeter extends React.Component{
     const progress = ((this.state.dailyHydration / 64) * 100)
     const currentOuncesOfWater = (this.state.dailyHydration || this.state.dailyHydration === 0)  ? this.state.dailyHydration : '...loading'
     const currentUser = this.state.userName ? this.state.userName : '...loading'
-    console.log(this.state)
+    const dateToDisplay = this.state.date.toString()
     return(
       <div>
         <div className="date-picker">
           <h6>Pick a date to checkout:</h6>
          <DatePicker 
-            selected={this.state.dayToQuery}
             onChange={this.handleChange}
           />
         </div>
         <div>
-          <h1>Hey {currentUser}, you've had {currentOuncesOfWater} of Ounces of H20 Today</h1>
+          <h1>Hey {currentUser}, you've had {currentOuncesOfWater} of Ounces of H20 {dateToDisplay}</h1>
         </div>
         <div className="water-data">
           <h3>Add Some Hydration:</h3>
