@@ -12,7 +12,8 @@ class HydrationMeter extends React.Component{
       user: this.props.firebase.auth.currentUser.uid,
       userName: '',
       dailyHydration: 0,
-      date: this.findDayByMils(Date.now())
+      date: this.findDayByMils(Date.now()),
+      dateToDisplay: new Date()
     };
     this.updateUserOunces = this.updateUserOunces.bind(this);
     this.findDayByMils = this.findDayByMils.bind(this);
@@ -78,11 +79,10 @@ class HydrationMeter extends React.Component{
 
   handleChange = selectedDate => {
     const date = this.findDayByDatePicker(selectedDate)
-    console.log(date)
     this.setState({
-      date: date
-    })
-    this.updateUserOunces()
+      date: date,
+      dateToDisplay: selectedDate
+    },() => this.updateUserOunces())
   };
 
   getUsersHydration(){
@@ -120,12 +120,26 @@ class HydrationMeter extends React.Component{
     });
     this.updateUserOunces();
   }
+
+  formatStringToDisplayToUser(){
+   const date = this.state.dateToDisplay
+   console.log((date < new Date()))
+   if (date < new Date()){
+     return ('had ' + this.formatOuncesToDisplay().toString() + ' ounces of water on ' + date.toString())
+   } else {
+     return ('have had ' + this.formatOuncesToDisplay().toString() + ' ounces of so far')
+   }
+  }
+
+  formatOuncesToDisplay(){
+    const currentOuncesOfWater = (this.state.dailyHydration || this.state.dailyHydration === 0)  ? this.state.dailyHydration : '...loading'
+    return currentOuncesOfWater
+  }
   
   render(){
     const progress = ((this.state.dailyHydration / 64) * 100)
-    const currentOuncesOfWater = (this.state.dailyHydration || this.state.dailyHydration === 0)  ? this.state.dailyHydration : '...loading'
     const currentUser = this.state.userName ? this.state.userName : '...loading'
-    const dateToDisplay = this.state.date.toString()
+    const contentToDisplay = this.formatStringToDisplayToUser()
     return(
       <div>
         <div className="date-picker">
@@ -135,7 +149,7 @@ class HydrationMeter extends React.Component{
           />
         </div>
         <div>
-          <h1>Hey {currentUser}, you've had {currentOuncesOfWater} of Ounces of H20 {dateToDisplay}</h1>
+          <h1>Hey {currentUser}, you {contentToDisplay}</h1>
         </div>
         <div className="water-data">
           <h3>Add Some Hydration:</h3>
